@@ -27,6 +27,8 @@
 #' )
 #' mm
 #' as.data.frame(mm$result)
+#' if (require("see")) mm$plot()
+#' mm$print() # Same as print(mm)
 #'
 #' # way 2:
 #' mm2 <- REGModel$new(
@@ -65,8 +67,9 @@
 #'   f = "poisson"
 #' )
 #' mm4
+#' mm4$plot_forest()
 #' mm4$get_forest_data()
-#' mm4$plot_forest(xlim = c(-1, 3), ref_line = 0)
+#' mm4$plot_forest()
 #' @testexamples
 #' expect_is(mm, "REGModel")
 #' expect_is(mm2, "REGModel")
@@ -76,9 +79,6 @@
 REGModel <- R6::R6Class(
   "REGModel",
   inherit = NULL,
-  cloneable = FALSE,
-  lock_objects = TRUE,
-  lock_class = TRUE,
   public = list(
     #' @field data a `data.table` storing modeling data.
     #' @field recipe an R `formula` storing model formula.
@@ -132,8 +132,8 @@ REGModel <- R6::R6Class(
         }
         x <- recipe$x
         y <- recipe$y
-        x_vars <- unique(sapply(x, get_vars))
-        y_vars <- unique(sapply(y, get_vars))
+        x_vars <- unique(unlist(sapply(x, get_vars)))
+        y_vars <- unique(unlist(sapply(y, get_vars)))
         self$terms <- x_vars
         all_vars <- c(x_vars, y_vars)
         # Update recipe to a formula
@@ -207,7 +207,7 @@ REGModel <- R6::R6Class(
     #' @param xlim limits of x axis.
     #' @param ... other plot options passing to [forestploter::forest()].
     #' Also check <https://github.com/adayim/forestploter> to see more complex adjustment of the result plot.
-    plot_forest = function(ref_line = 1, xlim = c(0, 2), ...) {
+    plot_forest = function(ref_line = NULL, xlim = NULL, ...) {
       data <- self$forest_data
       if (is.null(data)) {
         message("Never call '$get_forest_data()' before, run with default options to get plotting data")
@@ -216,8 +216,9 @@ REGModel <- R6::R6Class(
       plot_forest(data, ref_line, xlim, ...)
     },
     #' @description print the `REGModel$result` with default plot methods from **see** package.
-    plot = function() {
-      plot(self$result)
+    #' @param ... other parameters passing to `plot()` in `see:::plot.see_parameters_model` function.
+    plot = function(...) {
+      plot(self$result, ...)
     },
     #' @description print the `REGModel` object
     #' @param ... unused.
@@ -234,6 +235,33 @@ REGModel <- R6::R6Class(
 )
 
 plot_forest <- function(data, ref_line = 1, xlim = c(0, 2), ...) {
+  stopifnot(is.null(xlim) || length(xlim) == 2L)
+  stopifnot(is.null(ref_line) || length(ref_line) == 1L)
+
+  if (is.null(ref_line)) {
+    model <- get("self", rlang::caller_env())$model
+    if (is.null(model)) {
+      # If it is a Model list
+      model <- get("self", rlang::caller_env())$mlist[[1]]
+    }
+    ref_line <- if (inherits(model, "coxph") || (inherits(model, "glm") && model$family$link == "logit")) 1L else 0L
+  }
+
+  if (is.null(xlim)) {
+    xlim <- c(
+      floor(min(data$CI_low, na.rm = TRUE)),
+      ceiling(max(data$CI_high, na.rm = TRUE))
+    )
+    if (is.infinite(xlim[1])) {
+      warning("\ninfinite CI detected, set a minimal value -100", immediate. = TRUE)
+      xlim[1] <- -100
+    }
+    if (is.infinite(xlim[2])) {
+      warning("\ninfinite CI detected, set a maximal value 100", immediate. = TRUE)
+      xlim[2] <- 100
+    }
+  }
+
   dt <- data[, c("variable", "level", "n")]
   # Add blank column for the forest plot to display CI.
   # Adjust the column width with space.
@@ -280,6 +308,7 @@ make_forest_terms <- function(model, tidy_model, data,
   colnames(tidy_model)[1:2] <- c("term", "estimate")
 
   forest_terms <- merge(
+    # TODO: 这个对纯交互项处理也存在问题
     data.table::data.table(
       term_label = attr(model$terms, "term.labels")
     )[, variable := remove_backticks(term_label)],

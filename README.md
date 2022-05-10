@@ -10,8 +10,6 @@ status](https://www.r-pkg.org/badges/version/regport)](https://cran.r-project.or
 [![lifecycle](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 [![R-CMD-check](https://github.com/ShixiangWang/regport/workflows/R-CMD-check/badge.svg)](https://github.com/ShixiangWang/regport/actions)
 [![](https://cranlogs.r-pkg.org/badges/grand-total/regport?color=orange)](https://cran.r-project.org/package=regport)
-[![Closed
-issues](https://img.shields.io/github/issues-closed/ShixiangWang/regport.svg)](https://github.com/ShixiangWang/regport/issues?q=is%3Aissue+is%3Aclosed)
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FShixiangWang%2Fregport&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
 
 <!-- badges: end -->
@@ -53,10 +51,6 @@ model = REGModel$new(
     y = c("time", "status")
   )
 )
-#> data.frame [228, 3]
-#> survival::Surv(time, status) Surv 306 455 1010 210 883 1022~
-#> age                          dbl  74 68 56 57 60 74
-#> sex                          fct  1 1 1 1 1 1
 
 model
 #> <REGModel>    ========== 
@@ -78,10 +72,6 @@ model = REGModel$new(
   lung,
   recipe = Surv(time, status) ~ age + sex
 )
-#> data.frame [228, 3]
-#> Surv(time, status) Surv 306 455 1010 210 883 1022 1 1 0 1 1~
-#> age                dbl  74 68 56 57 60 74
-#> sex                fct  1 1 1 1 1 1
 
 model
 #> <REGModel>    ========== 
@@ -96,7 +86,7 @@ model
 #> [coxph] model ==========
 ```
 
-Visualize it:
+Take a look at the model result (package `see` is required):
 
 ``` r
 model$plot()
@@ -115,6 +105,11 @@ model$plot_forest()
 
 ## Batch processing models
 
+For building a list of regression model, unlike above, a lazy building
+approach is used, i.e., `$build()` must manually typed after creating
+`REGModelList` object. (This also means you can check or modify the
+setting before building if necessary)
+
 ``` r
 ml <- REGModelList$new(
   data = mtcars,
@@ -132,30 +127,6 @@ ml
 #> Not build yet, run $build() method 
 #> [] model ==========
 ml$build(f = "gaussian")
-#> data.frame [32, 5]
-#> mpg          dbl 21 21 22.8 21.4 18.7 18.1
-#> factor(cyl)  fct 6 6 4 6 8 6
-#> vs           dbl 0 0 1 1 0 1
-#> am           dbl 1 1 1 0 0 0
-#> factor(gear) fct 4 4 4 3 3 3
-#> data.frame [32, 5]
-#> mpg          dbl 21 21 22.8 21.4 18.7 18.1
-#> disp         dbl 160 160 108 258 360 225
-#> vs           dbl 0 0 1 1 0 1
-#> am           dbl 1 1 1 0 0 0
-#> factor(gear) fct 4 4 4 3 3 3
-#> data.frame [32, 5]
-#> mpg          dbl 21 21 22.8 21.4 18.7 18.1
-#> hp           dbl 110 110 93 110 175 105
-#> vs           dbl 0 0 1 1 0 1
-#> am           dbl 1 1 1 0 0 0
-#> factor(gear) fct 4 4 4 3 3 3
-#> data.frame [32, 5]
-#> mpg          dbl 21 21 22.8 21.4 18.7 18.1
-#> drat         dbl 3.9 3.9 3.85 3.08 3.15 2.76
-#> vs           dbl 0 0 1 1 0 1
-#> am           dbl 1 1 1 0 0 0
-#> factor(gear) fct 4 4 4 3 3 3
 str(ml$result)
 #> Classes 'data.table' and 'data.frame':   25 obs. of  10 variables:
 #>  $ focal_term: chr  "factor(cyl)" "factor(cyl)" "factor(cyl)" "factor(cyl)" ...
@@ -199,10 +170,10 @@ ml$plot_forest(ref_line = 0, xlim = c(-15, 8))
 
 ``` r
 covr::package_coverage()
-#> regport Coverage: 83.27%
+#> regport Coverage: 90.59%
 #> R/utils.R: 75.00%
-#> R/REGModelList.R: 79.31%
-#> R/REGModel.R: 85.14%
+#> R/REGModel.R: 89.19%
+#> R/REGModelList.R: 98.28%
 ```
 
 ## LICENSE

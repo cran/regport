@@ -14,19 +14,22 @@
 #'   covars = c(colnames(mtcars)[8:9], "factor(gear)")
 #' )
 #' ml
+#' ml$print()
+#' ml$plot_forest()
+#'
 #' ml$build(f = "gaussian")
+#' \dontrun{
+#' ml$build(f = "gaussian", parallel = TRUE)
+#' }
+#' ml$print()
 #' ml$result
 #' ml$forest_data
-#'
-#' ml$plot_forest(ref_line = 0, xlim = c(-15, 8))
+#' ml$plot_forest()
 #' @testexamples
 #' expect_is(ml, "REGModelList")
 REGModelList <- R6::R6Class(
   "REGModelList",
   inherit = NULL,
-  cloneable = FALSE,
-  lock_objects = TRUE,
-  lock_class = TRUE,
   public = list(
     #' @field data a `data.table` storing modeling data.
     #' @field x focal variables (terms).
@@ -76,6 +79,7 @@ REGModelList <- R6::R6Class(
     #' @param exp logical, indicating whether or not to exponentiate the the coefficients.
     #' @param ci confidence Interval (CI) level. Default to 0.95 (95%).
     #' e.g. [survival::coxph()].
+    #' @param parallel if `TRUE`, use N-1 cores to run the task.
     #' @return a `REGModel` R6 object.
     build = function(f = c(
                        "coxph", "binomial", "gaussian",
@@ -84,6 +88,7 @@ REGModelList <- R6::R6Class(
                        "quasipoisson"
                      ),
                      exp = NULL, ci = 0.95,
+                     parallel = FALSE,
                      ...) {
       f <- f[1]
       stopifnot(
@@ -93,32 +98,80 @@ REGModelList <- R6::R6Class(
 
       self$args <- list(...)
       ml <- list()
-      for (i in seq_along(self$x)) {
-        m <- REGModel$new(
-          self$data,
-          recipe = list(
-            x = unique(c(self$x[i], self$covars)),
-            y = self$y
-          ),
-          f = f, exp = exp, ci = ci, ...
+      # for (i in seq_along(self$x)) {
+      #   m <- REGModel$new(
+      #     self$data,
+      #     recipe = list(
+      #       x = unique(c(self$x[i], self$covars)),
+      #       y = self$y
+      #     ),
+      #     f = f, exp = exp, ci = ci, ...
+      #   )
+      #   m$get_forest_data()
+      #   ml[[i]] <- m
+      # }
+      #
+      build_one <- function(i, ...) {
+        m <- tryCatch(
+          {
+            m <- REGModel$new(
+              self$data,
+              recipe = list(
+                x = unique(c(self$x[i], self$covars)),
+                y = self$y
+              ),
+              f = f, exp = exp, ci = ci, ...
+            )
+            m$get_forest_data()
+            m
+          },
+          error = function(e) {
+            message("failed for ", self$x[i], " due to following error")
+            message(e$message)
+            NULL
+          }
         )
-        m$get_forest_data()
-        ml[[i]] <- m
+        m
       }
-      self$mlist <- ml
+
+      if (.Platform$OS.type == "windows") {
+        message("parallel computation from parallel package is not supported in Windows, disable it.")
+        parallel <- FALSE
+      }
+
+      fcall <- if (parallel) parallel::mclapply else lapply
+      args <- if (!parallel) {
+        list(seq_along(self$x), FUN = build_one, ...)
+      } else {
+        list(seq_along(self$x),
+          FUN = build_one,
+          mc.cores = max(parallel::detectCores() - 1L, 1L),
+          ...
+        )
+      }
+      ml <- do.call("fcall", args = args)
+
+      ml_status <- sapply(ml, is.null)
+      if (all(ml_status)) {
+        message("no model built, return NULL")
+        return(invisible(NULL))
+      }
+      xs <- self$x[!ml_status]
+      self$mlist <- ml[!ml_status]
+      ml <- ml[!ml_status]
       self$type <- ml[[1]]$type
       self$result <- data.table::rbindlist(
         lapply(
           seq_along(ml),
-          function(x) cbind(focal_term = self$x[x], ml[[x]]$result)
-        ),
+          function(x) cbind(focal_term = xs[x], ml[[x]]$result)
+        )
       )
       colnames(self$result)[2:3] <- c("variable", "estimate")
       self$forest_data <- data.table::rbindlist(
         lapply(
           seq_along(ml),
-          function(x) cbind(focal_term = self$x[x], ml[[x]]$forest_data)
-        ),
+          function(x) cbind(focal_term = xs[x], ml[[x]]$forest_data)
+        )
       )
       # Only keep focal term
       self$forest_data <- self$forest_data[focal_term == term_label]
@@ -126,13 +179,21 @@ REGModelList <- R6::R6Class(
     #' @description plot forest.
     #' @param ref_line reference line, default is `1` for HR.
     #' @param xlim limits of x axis.
+    #' @param vars selected variables to show.
+    #' @param p selected variables with level' pvalue lower than p.
     #' @param ... other plot options passing to [forestploter::forest()].
     #' Also check <https://github.com/adayim/forestploter> to see more complex adjustment of the result plot.
-    plot_forest = function(ref_line = 1, xlim = c(0, 2), ...) {
+    plot_forest = function(ref_line = NULL, xlim = NULL, vars = NULL, p = NULL, ...) {
       data <- self$forest_data
       if (is.null(data)) {
         message("Please run $build() before $plot_forest()")
         return(NULL)
+      }
+      if (!is.null(vars)) data <- data[data$focal_term %in% vars]
+      if (!is.null(p)) {
+        minps <- sapply(split(data, data$focal_term), function(x) min(x$p, na.rm = TRUE))
+        vars2 <- names(minps[minps < p])
+        data <- data[data$focal_term %in% vars2]
       }
       plot_forest(data, ref_line, xlim, ...)
     },

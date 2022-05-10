@@ -16,11 +16,17 @@ ml <- REGModelList$new(
   covars = c(colnames(mtcars)[8:9], "factor(gear)")
 )
 ml
+ml$print()
+ml$plot_forest()
+
 ml$build(f = "gaussian")
+\dontrun{
+ml$build(f = "gaussian", parallel = TRUE)
+}
+ml$print()
 ml$result
 ml$forest_data
-
-ml$plot_forest(ref_line = 0, xlim = c(-15, 8))
+ml$plot_forest()
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -53,6 +59,7 @@ data.frame with \code{\link[=as.data.frame]{as.data.frame()}} or \code{\link[dat
 \item \href{#method-build}{\code{REGModelList$build()}}
 \item \href{#method-plot_forest}{\code{REGModelList$plot_forest()}}
 \item \href{#method-print}{\code{REGModelList$print()}}
+\item \href{#method-clone}{\code{REGModelList$clone()}}
 }
 }
 \if{html}{\out{<hr>}}
@@ -92,6 +99,7 @@ Build \code{REGModelList} object.
     "quasi", "quasibinomial", "quasipoisson"),
   exp = NULL,
   ci = 0.95,
+  parallel = FALSE,
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -108,6 +116,8 @@ Other options are members of GLM family, see \code{\link[stats:family]{stats::fa
 \item{\code{ci}}{confidence Interval (CI) level. Default to 0.95 (95\%).
 e.g. \code{\link[survival:coxph]{survival::coxph()}}.}
 
+\item{\code{parallel}}{if \code{TRUE}, use N-1 cores to run the task.}
+
 \item{\code{...}}{other parameters passing to corresponding regression model function.}
 }
 \if{html}{\out{</div>}}
@@ -122,7 +132,13 @@ a \code{REGModel} R6 object.
 \subsection{Method \code{plot_forest()}}{
 plot forest.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{REGModelList$plot_forest(ref_line = 1, xlim = c(0, 2), ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{REGModelList$plot_forest(
+  ref_line = NULL,
+  xlim = NULL,
+  vars = NULL,
+  p = NULL,
+  ...
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -131,6 +147,10 @@ plot forest.
 \item{\code{ref_line}}{reference line, default is \code{1} for HR.}
 
 \item{\code{xlim}}{limits of x axis.}
+
+\item{\code{vars}}{selected variables to show.}
+
+\item{\code{p}}{selected variables with level' pvalue lower than p.}
 
 \item{\code{...}}{other plot options passing to \code{\link[forestploter:forest]{forestploter::forest()}}.
 Also check \url{https://github.com/adayim/forestploter} to see more complex adjustment of the result plot.}
@@ -151,6 +171,23 @@ print the \code{REGModelList} object
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{...}}{unused.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
+\subsection{Method \code{clone()}}{
+The objects of this class are cloneable with this method.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{REGModelList$clone(deep = FALSE)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{deep}}{Whether to make a deep clone.}
 }
 \if{html}{\out{</div>}}
 }
