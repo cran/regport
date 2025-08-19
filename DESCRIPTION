@@ -1,6 +1,6 @@
 Package: regport
 Title: Regression Model Processing Port
-Version: 0.3.0
+Version: 0.3.1
 Authors@R: 
     person("Shixiang", "Wang", , "w_shixiang@163.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-9855-7357"))
@@ -15,10 +15,11 @@ Imports: broom.helpers, data.table, dplyr, forestploter, glue,
 Suggests: parallel, roxygen2, see, testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Encoding: UTF-8
-RoxygenNote: 7.1.2
+RoxygenNote: 7.3.2
 NeedsCompilation: no
-Packaged: 2022-05-10 05:04:39 UTC; Administrator
-Author: Shixiang Wang [aut, cre] (<https://orcid.org/0000-0001-9855-7357>)
+Packaged: 2025-08-19 08:01:19 UTC; wsx
+Author: Shixiang Wang [aut, cre] (ORCID:
+    <https://orcid.org/0000-0001-9855-7357>)
 Maintainer: Shixiang Wang <w_shixiang@163.com>
 Repository: CRAN
-Date/Publication: 2022-05-10 05:30:06 UTC
+Date/Publication: 2025-08-19 09:00:02 UTC
